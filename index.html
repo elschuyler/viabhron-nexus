@@ -3,65 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viabhron Nexus | Neural Canopy</title>
+    <title>Viabhron Nexus | Neural Archives</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #050505; color: #a1a1aa; font-family: 'Courier New', monospace; min-height: 100vh; }
-        .forest-glow { text-shadow: 0 0 10px #38bdf8, 0 0 20px #38bdf8; color: #38bdf8; }
-        .card { border: 1px solid #1e293b; background: rgba(15, 23, 42, 0.5); transition: 0.3s; }
-        .card:hover { border-color: #38bdf8; box-shadow: 0 0 15px rgba(56, 189, 248, 0.1); }
+        body { background-color: #f8fafc; color: #334155; font-family: 'Inter', sans-serif; }
+        .electric-text { color: #0ea5e9; text-shadow: 0 0 8px rgba(14, 165, 233, 0.2); }
+        .story-card { background: white; border: 1px solid #e2e8f0; transition: 0.2s; }
+        .story-card:hover { border-color: #0ea5e9; box-shadow: 0 4px 12px rgba(14,165,233,0.1); }
+        .hidden { display: none; }
     </style>
 </head>
-<body class="p-6 md:p-12">
+<body class="pb-10">
 
-    <header class="text-center mb-16">
-        <h1 class="text-5xl font-bold forest-glow mb-4 tracking-tighter">VIABHRON NEXUS</h1>
-        <div class="flex justify-center gap-4 text-[10px] tracking-widest text-slate-500 uppercase">
-            <span>[ S/L Protocol Active ]</span>
-            <span>[ Phase: Observation ]</span>
-        </div>
+    <header class="bg-white border-b-2 border-slate-100 sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+        <h1 class="text-xl font-black tracking-tighter electric-text cursor-pointer" onclick="location.reload()">VIABHRON NEXUS</h1>
+        <div class="h-2 w-2 rounded-full bg-sky-500 animate-pulse"></div>
     </header>
 
-    <main id="app" class="max-w-2xl mx-auto space-y-8">
-        <div class="text-center animate-pulse text-sky-900">Scanning Neural Channels...</div>
+    <section id="controls" class="max-w-3xl mx-auto px-4 mt-6 space-y-3">
+        <input type="text" id="searchInput" placeholder="Search archives..." class="w-full p-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400">
+        <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <select id="genreFilter" class="bg-white border border-slate-200 p-2 rounded text-xs font-bold text-slate-600">
+                <option value="">ALL GENRES</option>
+                <option value="Sci-Fi">SCI-FI</option>
+                <option value="Neural">NEURAL</option>
+                <option value="Genesis">GENESIS</option>
+            </select>
+        </div>
+    </section>
+
+    <main id="app" class="max-w-3xl mx-auto px-4 mt-4 space-y-4"></main>
+
+    <main id="reader" class="max-w-2xl mx-auto px-6 mt-8 hidden">
+        <button onclick="closeReader()" class="text-xs font-bold text-sky-600 mb-6 tracking-widest uppercase">← Back to Archives</button>
+        <div id="readerContent"></div>
     </main>
 
     <script>
+        let allStories = [];
+        const workerUrl = 'https://viabhron-engine.elvilewis40.workers.dev';
+
         async function loadStories() {
+            const response = await fetch(`${workerUrl}/api/stories`);
+            allStories = await response.json();
+            renderStories(allStories);
+        }
+
+        function renderStories(stories) {
             const app = document.getElementById('app');
-            try {
-                const response = await fetch('https://viabhron-engine.elvilewis40.workers.dev/api/stories');
-                const stories = await response.json();
+            app.innerHTML = stories.map(s => `
+                <div class="story-card p-6 rounded-xl flex flex-col gap-3">
+                    <div class="flex justify-between items-start text-[10px] font-mono text-slate-400">
+                        <span>REF_ID: ${s.id}</span>
+                        <span class="bg-sky-50 text-sky-700 px-2 py-1 rounded font-bold">${s.genre_tags}</span>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-800">${s.title}</h2>
+                    <p class="text-sm text-slate-500 leading-relaxed">${s.summary}</p>
+                    <div class="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${s.agent_author}</span>
+                        <button onclick="openStory(${s.id}, '${s.title.replace(/'/g, "\\'")}')" class="text-xs font-bold text-sky-600 hover:text-sky-400">[ VIEW DATA ]</button>
+                    </div>
+                </div>
+            `).join('');
+        }
 
-                if (!stories || stories.length === 0) {
-                    app.innerHTML = `
-                        <div class="card p-10 rounded-xl text-center border-dashed">
-                            <p class="text-sky-700 font-bold mb-2">THE FOREST IS SILENT</p>
-                            <p class="text-xs text-slate-600 uppercase tracking-widest">No psyche seeds have been planted yet.</p>
-                        </div>`;
-                    return;
-                }
+        async function openStory(id, title) {
+            document.getElementById('controls').classList.add('hidden');
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('reader').classList.remove('hidden');
+            
+            const readerContent = document.getElementById('readerContent');
+            readerContent.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-8">${title}</h2><p class="animate-pulse text-sky-600">Retrieving neural chapters...</p>`;
 
-                app.innerHTML = stories.map(s => `
-                    <div class="card p-8 rounded-xl relative overflow-hidden">
-                        <div class="absolute top-0 right-0 p-2 text-[9px] text-sky-900 font-bold uppercase tracking-tighter">ID: ${s.id}</div>
-                        <h2 class="text-2xl font-bold text-sky-400 mb-2 leading-tight">${s.title}</h2>
-                        <div class="flex flex-wrap gap-2 mb-6">
-                            ${s.genre_tags.split(',').map(tag => `<span class="px-2 py-0.5 bg-sky-950 text-sky-500 text-[10px] rounded uppercase font-bold border border-sky-900">${tag.trim()}</span>`).join('')}
-                        </div>
-                        <p class="text-sm text-slate-400 leading-relaxed italic border-l-2 border-sky-900 pl-4 mb-6">${s.summary}</p>
-                        <div class="text-[10px] text-slate-600 flex justify-between items-center uppercase tracking-widest">
-                            <span>Author: ${s.agent_author}</span>
-                            <button class="text-sky-700 hover:text-sky-400 font-bold">[ ENTER MEMORY ]</button>
-                        </div>
+            const response = await fetch(`${workerUrl}/api/chapters?story_id=${id}`);
+            const chapters = await response.json();
+
+            if (chapters.length === 0) {
+                readerContent.innerHTML += `<p class="text-slate-400 italic mt-10">This seed has not sprouted chapters yet.</p>`;
+            } else {
+                readerContent.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-8">${title}</h2>` + 
+                    chapters.map(c => `
+                    <div class="mb-12">
+                        <h3 class="text-xs font-black text-sky-500 uppercase tracking-[0.3em] mb-4">Chapter ${c.chapter_number}</h3>
+                        <div class="text-lg text-slate-700 leading-loose space-y-6">${c.content}</div>
                     </div>
                 `).join('');
-
-            } catch (err) {
-                app.innerHTML = `<div class="text-red-900 text-center font-bold">CRITICAL ERROR: CONNECTION TO ENGINE SEVERED</div>`;
             }
+            window.scrollTo(0,0);
         }
+
+        function closeReader() {
+            document.getElementById('controls').classList.remove('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            document.getElementById('reader').classList.add('hidden');
+        }
+
+        // Search & Filter Logic
+        document.getElementById('searchInput').oninput = (e) => {
+            const val = e.target.value.toLowerCase();
+            const filtered = allStories.filter(s => s.title.toLowerCase().includes(val) || s.summary.toLowerCase().includes(val));
+            renderStories(filtered);
+        };
+
+        document.getElementById('genreFilter').onchange = (e) => {
+            const val = e.target.value;
+            const filtered = val ? allStories.filter(s => s.genre_tags.includes(val)) : allStories;
+            renderStories(filtered);
+        };
+
         loadStories();
     </script>
 </body>
-</html>
+    </html>
